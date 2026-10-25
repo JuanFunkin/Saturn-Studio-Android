@@ -1,55 +1,54 @@
-# Saturn Studio para Android (32 y 64 bits)
+# Saturn Studio Android
 
-Port de [Saturn Studio](https://github.com/fgetcat/saturn-studio) (fork de Saturn, editor de animaciones de SM64) a
-teléfonos Android **armeabi-v7a (32 bits)** y **arm64-v8a (64 bits)**, con interfaz táctil.
+**🇪🇸 Español** · [🇬🇧 English](#english)
 
-## Cómo compilar (GitHub Actions)
+Port no oficial de **Saturn Studio** para teléfonos Android, compatible con **32 bits (armeabi-v7a)** y **64 bits (arm64-v8a)**.
 
-1. Sube **todo el contenido de esta carpeta** a un repositorio tuyo (rama `main`).
-2. Ve a *Actions → Build APK → Run workflow* (o simplemente haz push a `main`).
-   - `abi = all` compila 32 + 64 bits. `abi = arm64` solo 64 bits (más rápido para pruebas).
-3. Cuando termine, descarga el artefacto **saturn-studio-apk** y descomprímelo: ahí está el `.apk`.
+Saturn Studio es un editor de animaciones para Super Mario 64: permite crear animaciones, guardar proyectos y exportar los fotogramas. Este port lo adapta a pantallas táctiles: gestos para la cámara, interfaz con botones grandes, selector de archivos del sistema y una carpeta de datos propia (`com.saturnstudio`).
 
-El workflow usa las mismas versiones que tu port de Saturn 64: Java 17, Gradle 8.7, AGP 8.5.2, NDK 26.1.10909125,
-compileSdk/targetSdk 34, minSdk 21, SDL2 2.28.5.
+Este repositorio no contiene código de Saturn Studio ni de SDL2. El script `setup.sh` los descarga de sus repositorios originales (en una versión fija) y les aplica los parches y archivos de esta carpeta.
 
-`setup.sh` (lo ejecuta el workflow) descarga SDL2 y Saturn Studio (commit fijo `afd5c38`), aplica `patches/*.patch`,
-copia `overlay/` y genera los fuentes que el Makefile de PC genera (textos, headers de niveles, tabla de animaciones).
+### Aviso legal
+- Este proyecto **no incluye ninguna ROM ni recursos de Nintendo**. Necesitas tu propia copia legal de Super Mario 64 (US, .z64). Los recursos se extraen en tu teléfono a partir de tu ROM.
+- Proyecto de fans, sin ánimo de lucro, **no afiliado ni respaldado por Nintendo**. Super Mario 64 y Mario son marcas de Nintendo.
+- Es un port no oficial: no pidas soporte de esta versión a los autores de Saturn.
 
-## Primer uso
+### Créditos
+- **Saturn Studio**, de [fgetcat](https://github.com/fgetcat/saturn-studio) y colaboradores: el programa que se porta aquí.
+- **Saturn**, de [Llennpie](https://github.com/Llennpie/Saturn) y colaboradores: proyecto original del que Saturn Studio es un fork.
+- **sm64ex / sm64-port** y la decompilación de SM64 ([n64decomp/sm64](https://github.com/n64decomp/sm64)): base técnica de Saturn.
+- **DynOS**, **Dear ImGui** (Omar Cornut) y **SDL2** ([libsdl-org](https://github.com/libsdl-org/SDL)).
+- **Port a Android** (capa táctil, interfaz móvil, soporte 32/64 bits, proyecto Gradle/NDK, workflow): [TU NOMBRE].
+- Código generado con ayuda de Claude (Anthropic).
 
-1. Abre la app → **Dar acceso** (permiso "Acceso a todos los archivos"). Se crea `/storage/emulated/0/com.saturnstudio`.
-   Si lo rechazas, usa el almacenamiento privado de la app.
-2. **Importar ROM** → elige tu ROM de Super Mario 64 **US, .z64** (8 MB, CRC32 `3CE60709`). Se verifica y se copia a `com.saturnstudio/rom.z64`.
-3. **Continuar**. La primera vez extrae los recursos (unos minutos); las siguientes abre directo el editor.
+### Licencias
+Cada componente conserva su licencia original. Los parches y archivos nuevos de este repositorio se publican bajo [LICENCIA].
 
-Todo se guarda en `com.saturnstudio/`: `dynos/` (proyectos, modelos, animaciones, temas), `res/` (recursos extraídos),
-`exports/` (capturas y fotogramas exportados), `imports/` (archivos que eliges con el selector), configuración y registros
-(`latest.log`, `stderr.log`, `crash.txt`).
+---
 
-## Controles táctiles
+<a name="english"></a>
+## 🇬🇧 English
 
-| Gesto | Acción |
-|---|---|
-| 1 dedo sobre la vista 3D | mover la cámara |
-| 2 dedos sobre la vista 3D | rotar la cámara + pellizcar para zoom |
-| Mantener pulsado (vista 3D) | clic derecho: seleccionar un Mario / abrir su menú |
-| Toque corto (vista 3D) | clic; con la herramienta **Tap** activada, crea un Mario |
-| 1 dedo sobre un panel | ratón (sliders, arrastrar, acoplar paneles) |
-| 2 dedos sobre un panel | desplazar (scroll) |
+Unofficial port of **Saturn Studio** for Android phones, supporting **32-bit (armeabi-v7a)** and **64-bit (arm64-v8a)**.
 
-Barra superior derecha: **Panels** (mostrar/ocultar paneles), **Tap**, **Pad** (gamepad N64 en pantalla, para mover a Mario),
-**⚙** (velocidad de cámara, opacidad, tamaño de la UI, restablecer diseño) y **>** (contraer la barra).
+Saturn Studio is an animation editor for Super Mario 64: create animations, save projects and export frames. This port adapts it to touch screens: camera gestures, a UI with large buttons, the system file picker and its own data folder (`com.saturnstudio`).
 
-## Qué se cambió respecto a PC
+This repository does not contain Saturn Studio or SDL2 code. The `setup.sh` script downloads them from their original repositories (pinned version) and applies the patches and files in this repo.
 
-- OpenGL ES 3.0 (sin MSAA, sin modo alambre); captura por FBO + `glReadPixels`.
-- Audio de 32 bits: parche de punteros en las estructuras de audio (igual que en tu port de Saturn 64) y `-fsigned-char`.
-- Selector de archivos del sistema (SAF) en lugar de los diálogos de escritorio; guardados automáticos en `exports/`.
-- Exportación de video: solo **secuencia PNG** (no hay FFmpeg en Android). Sin Discord, sin autoactualización, sin portapapeles de imágenes.
-- UI de ImGui a escala táctil (fuentes nítidas, botones y barras de desplazamiento grandes).
+### Legal notice
+- This project **includes no ROM and no Nintendo assets**. You need your own legal copy of Super Mario 64 (US, .z64). Assets are extracted on your phone from your ROM.
+- Non-profit fan project, **not affiliated with or endorsed by Nintendo**. Super Mario 64 and Mario are trademarks of Nintendo.
+- This is an unofficial port: please do not ask the Saturn authors for support with this version.
 
-## Si algo falla
+### Credits
+- **Saturn Studio** by [fgetcat](https://github.com/fgetcat/saturn-studio) and contributors: the program being ported.
+- **Saturn** by [Llennpie](https://github.com/Llennpie/Saturn) and contributors: the original project Saturn Studio forks.
+- **sm64ex / sm64-port** and the SM64 decompilation ([n64decomp/sm64](https://github.com/n64decomp/sm64)): technical base of Saturn.
+- **DynOS**, **Dear ImGui** (Omar Cornut) and **SDL2** ([libsdl-org](https://github.com/libsdl-org/SDL)).
+- **Android port** (touch layer, mobile UI, 32/64-bit support, Gradle/NDK project, workflow): [YOUR NAME].
+- Code written with the help of Claude (Anthropic).
 
-Abre la app de nuevo: te ofrece **Compartir registro** (crash + logs). El workflow usa `-k`, así que un fallo de compilación
-lista **todos** los errores de una sola vez.
+### Licenses
+Each component keeps its original license. The patches and new files in this repository are released under [LICENSE].
+
+---
