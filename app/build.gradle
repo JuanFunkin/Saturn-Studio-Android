@@ -1,0 +1,46 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.saturnstudio'
+    compileSdk 34
+    ndkVersion "26.1.10909125"
+
+    defaultConfig {
+        applicationId "com.saturnstudio"
+        minSdk 21          // Android 5.0+: includes 32-bit phones
+        targetSdk 34
+        versionCode 1
+        versionName "0.1-android"
+
+        ndk {
+            if (project.hasProperty('onlyArm64')) {
+                abiFilters 'arm64-v8a'                  // fast test build (64-bit only)
+            } else {
+                abiFilters 'armeabi-v7a', 'arm64-v8a'   // 32-bit + 64-bit
+            }
+        }
+        externalNativeBuild {
+            ndkBuild {
+                arguments 'APP_PLATFORM=android-21', '-k'   // -k: keep going, shows ALL compile errors in one run
+            }
+        }
+    }
+
+    externalNativeBuild {
+        ndkBuild {
+            path file('src/main/jni/Android.mk')
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // The engine (libmain.so) is big: do not compress what is already compressed, keep assets readable.
+    androidResources {
+        noCompress 'png', 'bin', 'json', 'ttf'
+    }
+}

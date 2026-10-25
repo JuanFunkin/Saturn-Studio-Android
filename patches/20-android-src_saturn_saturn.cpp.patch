@@ -1,0 +1,76 @@
+--- a/src/saturn/saturn.cpp
++++ b/src/saturn/saturn.cpp
+@@ -1,4 +1,7 @@
+ #include "saturn.h"
++#ifdef __ANDROID__
++#include "saturn/touch/saturn_touch_api.h"
++#endif
+ 
+ #include <SDL2/SDL_keyboard.h>
+ #include <SDL2/SDL_scancode.h>
+@@ -494,8 +497,13 @@
+             if (inprec) { pan |= rotate; rotate = false; }
+             float *x = &mmove_x, *y = &mmove_y;
+             if (rotate) { x = &mrotate_x; y = &mrotate_y; }
++#ifdef __ANDROID__
++            *x = mouse_state.x_diff * saturn_touch_camera_sensitivity();
++            *y = mouse_state.y_diff * saturn_touch_camera_sensitivity();
++#else
+             *x = mouse_state.x_diff;
+             *y = mouse_state.y_diff;
++#endif
+             if (inprec) {
+                 *x *= 64 * configCamCtrlMouseRotSens * inv(configCamCtrlMouseInprecRotInvX);
+                 *y *= 64 * configCamCtrlMouseRotSens * inv(configCamCtrlMouseInprecRotInvY);
+@@ -716,6 +724,10 @@
+ 
+     bool should_do_mouse_action = mouse_state.dist_travelled <= 3 && mouse_state.released && mouse_state.focused_on_game && !saturn_actor_is_recording_input() && !saturn_imgui_is_orthographic();
+     if (saturn_imgui_is_capturing_video()) should_do_mouse_action = false;
++#ifdef __ANDROID__
++    // A finger tap only spawns / selects when the toolbar "tap" tool is on; camera gestures never click.
++    if (!saturn_touch_tap_enabled()) should_do_mouse_action = false;
++#endif
+ 
+     if (setting_mario_struct_pos) {
+         Vec3f dir, hit;
+@@ -1297,6 +1309,10 @@
+             prompting_for_rom = false;
+         }
+     }
++#ifdef __ANDROID__
++    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
++    SDL_RenderClear(renderer);
++#endif
+     SDL_Rect rect = (SDL_Rect){
+         .x = 0,
+         .y = 0,
+@@ -1342,10 +1358,20 @@
+ int saturn_splash_screen_open() {
+     // make the x11 compositor on linux not kill itself
+     SDL_SetHint(SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR, "0");
++#ifdef __ANDROID__
++    SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
++    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "1");
++    SDL_Init(SDL_INIT_VIDEO);
++    SDL_Window* window = SDL_CreateWindow("Saturn Studio", 0, 0, 0, 0, SDL_WINDOW_FULLSCREEN);
++    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
++    SDL_RenderSetLogicalSize(renderer, 640, 360); // the splash is drawn for 640x360, letterboxed on the phone
++    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
++#else
+     SDL_Window* window = SDL_CreateWindow("Saturn Studio", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 640, 360, 0);
+     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+     SDL_SetWindowBordered(window, SDL_FALSE);
++#endif
+     saturn_splash_screen_init(renderer);
+     bool extracting_assets = true;
+     while (true) {
+@@ -1357,6 +1383,8 @@
+     }
+     SDL_DestroyRenderer(renderer);
+     SDL_DestroyWindow(window);
++#ifndef __ANDROID__
+     SDL_Quit();
++#endif
+     return extract_return_code;
+ }
