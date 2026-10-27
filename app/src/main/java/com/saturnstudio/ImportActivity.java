@@ -36,7 +36,7 @@ import java.util.zip.CRC32;
  *  - Saturn Studio keeps EVERYTHING (projects, exported frames, models, config, logs) in
  *    /storage/emulated/0/com.saturnstudio. That needs the "All files access" permission.
  *    If the user refuses, the app falls back to its private storage.
- *  - "Importar ROM" opens the phone's file picker; the ROM is verified (8 MB + CRC32 of the US ROM) and copied
+ *  - "Import ROM" opens the phone's file picker; the ROM is verified (8 MB + CRC32 of the US ROM) and copied
  *    to <data>/rom.z64. The engine extracts the assets from it on the first run.
  *  - Once the assets are extracted (marker res/.extracted written by the engine) this screen is skipped and the
  *    editor starts directly. If the last run crashed, the screen is shown so the log can be shared.
@@ -199,15 +199,15 @@ public class ImportActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER);
 
-        importButton = makeButton("Importar ROM");
+        importButton = makeButton("Import ROM");
         importButton.setOnClickListener(v -> onImportClicked());
         row.addView(importButton, wrap(0, dp(10)));
 
-        continueButton = makeButton("Continuar");
+        continueButton = makeButton("Continue");
         continueButton.setOnClickListener(v -> onContinueClicked());
         row.addView(continueButton, wrap(dp(10), dp(10)));
 
-        shareButton = makeButton("Compartir registro");
+        shareButton = makeButton("Share log");
         shareButton.setOnClickListener(v -> shareLog());
         row.addView(shareButton, wrap(dp(10), 0));
         shareButton.setVisibility(View.GONE);
@@ -215,7 +215,7 @@ public class ImportActivity extends Activity {
         box.addView(row);
 
         Button logButton = new Button(this);
-        logButton.setText("Guardar registro de depuración");
+        logButton.setText("Save debug log");
         logButton.setAllCaps(false);
         logButton.setTextColor(0xCCFFFFFF);
         logButton.setTextSize(13);
@@ -246,18 +246,18 @@ public class ImportActivity extends Activity {
         if (!f.exists()) return null;
         String t = tail(f, 100).trim();
         f.delete();
-        if (t.equals("rom_missing")) return "Falta la ROM. Impórtala otra vez.";
-        return "La ROM no es válida. Usa una ROM de Super Mario 64 (US) sin modificar, en formato .z64.";
+        if (t.equals("rom_missing")) return "The ROM is missing. Import it again.";
+        return "The ROM is not valid. Use an unmodified Super Mario 64 (US) ROM in .z64 format.";
     }
 
     private void refreshUi() {
         if (launching || busy) return;
 
         if (!storageReady()) {
-            status.setText("Saturn Studio guarda todo (proyectos, fotogramas exportados, modelos, configuración) en la carpeta\n"
-                    + "/storage/emulated/0/" + DATA_FOLDER + "\n\nPermite el acceso a todos los archivos para continuar.");
-            importButton.setText("Dar acceso");
-            continueButton.setText("Usar almacenamiento privado");
+            status.setText("Saturn Studio keeps everything (projects, exported frames, models, settings) in the folder\n"
+                    + "/storage/emulated/0/" + DATA_FOLDER + "\n\nAllow access to all files to continue.");
+            importButton.setText("Grant access");
+            continueButton.setText("Use private storage");
             setEnabledLook(importButton, true);
             setEnabledLook(continueButton, true);
             return;
@@ -287,14 +287,14 @@ public class ImportActivity extends Activity {
         if (romProblem != null) {
             status.setText(romProblem);
         } else if (problem) {
-            status.setText("Saturn Studio no se cerró bien la última vez. Pulsa \"Compartir registro\" para enviarlo al desarrollador, o Continuar para reintentar.");
+            status.setText("Saturn Studio did not close normally last time. Tap \"Share log\" to send the log to the developer, or Continue to try again.");
         } else if (canContinue) {
-            status.setText("ROM lista. Los datos se guardan en /storage/emulated/0/" + DATA_FOLDER);
+            status.setText("ROM ready. Your data is stored in /storage/emulated/0/" + DATA_FOLDER);
         } else {
-            status.setText("Importa tu ROM de Super Mario 64 (US, .z64) para empezar.\nSe copiará a la carpeta " + DATA_FOLDER + " y de ahí se extraen los recursos.");
+            status.setText("Import your Super Mario 64 ROM (US, .z64) to get started.\nIt is copied to the " + DATA_FOLDER + " folder and the assets are extracted from it.");
         }
-        importButton.setText(canContinue ? "Importar otra ROM" : "Importar ROM");
-        continueButton.setText("Continuar");
+        importButton.setText(canContinue ? "Import another ROM" : "Import ROM");
+        continueButton.setText("Continue");
         setEnabledLook(importButton, true);
         setEnabledLook(continueButton, canContinue);
     }
@@ -330,7 +330,7 @@ public class ImportActivity extends Activity {
         if (requestCode != REQ_PICK_ROM || resultCode != RESULT_OK || data == null || data.getData() == null) return;
         final Uri uri = data.getData();
         busy = true;
-        status.setText("Importando y verificando la ROM...");
+        status.setText("Importing and verifying the ROM...");
         setEnabledLook(importButton, false);
         setEnabledLook(continueButton, false);
         new Thread(() -> {
@@ -352,7 +352,7 @@ public class ImportActivity extends Activity {
         File tmp = new File(dir, "rom.import.tmp");
         try (InputStream in = getContentResolver().openInputStream(uri);
              OutputStream out = new FileOutputStream(tmp)) {
-            if (in == null) return "No se pudo abrir el archivo.";
+            if (in == null) return "Could not open the file.";
             CRC32 crc = new CRC32();
             byte[] buf = new byte[64 * 1024];
             long total = 0;
@@ -361,7 +361,7 @@ public class ImportActivity extends Activity {
                 total += n;
                 if (total > ROM_SIZE) {
                     tmp.delete();
-                    return "ROM no válida: el archivo es demasiado grande (debe pesar 8 MB).";
+                    return "Invalid ROM: the file is too large (it must be 8 MB).";
                 }
                 crc.update(buf, 0, n);
                 out.write(buf, 0, n);
@@ -369,24 +369,24 @@ public class ImportActivity extends Activity {
             out.flush();
             if (total != ROM_SIZE) {
                 tmp.delete();
-                return "ROM no válida: no pesa 8 MB.";
+                return "Invalid ROM: the size is not 8 MB.";
             }
             if (crc.getValue() != ROM_CRC32) {
                 tmp.delete();
-                return "ROM no válida: usa una ROM US sin modificar en formato .z64 (no .n64 ni .v64).";
+                return "Invalid ROM: use an unmodified US ROM in .z64 format (not .n64 or .v64).";
             }
         } catch (IOException | SecurityException e) {
             tmp.delete();
-            return "Error al copiar la ROM: " + e.getMessage();
+            return "Error copying the ROM: " + e.getMessage();
         }
         File dst = romFile();
         if (dst.exists() && !dst.delete()) {
             tmp.delete();
-            return "No se pudo reemplazar la ROM anterior.";
+            return "Could not replace the previous ROM.";
         }
         if (!tmp.renameTo(dst)) {
             tmp.delete();
-            return "No se pudo guardar la ROM.";
+            return "Could not save the ROM.";
         }
         return null;
     }
@@ -395,7 +395,7 @@ public class ImportActivity extends Activity {
         if (launching) return;
         launching = true;
         busy = true;
-        status.setText("Preparando los archivos de Saturn Studio...");
+        status.setText("Preparing Saturn Studio files...");
         setEnabledLook(importButton, false);
         setEnabledLook(continueButton, false);
         final File dir = dataDir();
@@ -408,7 +408,7 @@ public class ImportActivity extends Activity {
                 new File(dir, "extract_status.txt").delete();
                 new File(getFilesDir(), "running.flag").delete();
             } catch (IOException e) {
-                error = "Error al preparar los archivos: " + e.getMessage();
+                error = "Error preparing the files: " + e.getMessage();
             }
             final String err = error;
             runOnUiThread(() -> {
@@ -437,7 +437,7 @@ public class ImportActivity extends Activity {
     }
 
     private static String tail(File f, int maxBytes) {
-        if (!f.exists()) return "(no existe: " + f.getName() + ")\n";
+        if (!f.exists()) return "(missing: " + f.getName() + ")\n";
         try (RandomAccessFile raf = new RandomAccessFile(f, "r")) {
             long len = raf.length();
             int n = (int) Math.min(len, maxBytes);
@@ -446,7 +446,7 @@ public class ImportActivity extends Activity {
             raf.readFully(b);
             return new String(b, "UTF-8");
         } catch (IOException e) {
-            return "(no se pudo leer " + f.getName() + ": " + e.getMessage() + ")\n";
+            return "(could not read " + f.getName() + ": " + e.getMessage() + ")\n";
         }
     }
 
@@ -467,11 +467,11 @@ public class ImportActivity extends Activity {
     private void writeLog(Uri uri) {
         String text = buildLogText(120000, 20000);
         try (OutputStream out = getContentResolver().openOutputStream(uri)) {
-            if (out == null) throw new IOException("sin salida");
+            if (out == null) throw new IOException("no output stream");
             out.write(text.getBytes("UTF-8"));
-            Toast.makeText(this, "Registro guardado.", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Log saved.", Toast.LENGTH_SHORT).show();
         } catch (IOException e) {
-            Toast.makeText(this, "No se pudo guardar el registro: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Could not save the log: " + e.getMessage(), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -481,6 +481,6 @@ public class ImportActivity extends Activity {
         send.setType("text/plain");
         send.putExtra(Intent.EXTRA_SUBJECT, "Saturn Studio Android log");
         send.putExtra(Intent.EXTRA_TEXT, text);
-        startActivity(Intent.createChooser(send, "Compartir registro"));
+        startActivity(Intent.createChooser(send, "Share log"));
     }
 }

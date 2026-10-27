@@ -22,7 +22,8 @@ LOCAL_C_INCLUDES := \
 LOCAL_CFLAGS := \
     -DDYNOS -DRAPI_GL=1 -DWAPI_SDL2=1 -DAAPI_SDL2=1 -DCAPI_SDL2=1 -DHAVE_SDL2=1 \
     -DVERSION_US -D_LANGUAGE_C -DNON_MATCHING -DAVOID_UB -DF3DEX_GBI_2E \
-    -fno-strict-aliasing -fwrapv -fcommon -fsigned-char -funwind-tables \
+    -O0 -fno-strict-aliasing -fwrapv -fcommon -fsigned-char -funwind-tables \
+    -fno-delete-null-pointer-checks -fno-inline-functions \
     -DGIT_HASH=\"afd5c38\" -DGIT_BRANCH=\"android\" \
     -DNODRAWINGDISTANCE -DTEXTURE_FIX -DEXT_OPTIONS_MENU -DEXTERNAL_DATA \
     -DFS_BASEDIR=\"res\" \
@@ -30,7 +31,9 @@ LOCAL_CFLAGS := \
     -Wno-int-conversion -Wno-implicit-function-declaration -Wno-incompatible-pointer-types \
     -Wno-implicit-int -Wno-deprecated-declarations -Wno-narrowing -Wno-everything
 
-LOCAL_CPPFLAGS := -std=c++17 -fexceptions -frtti
+# The desktop Makefile builds the SM64 decomp C code with DEBUG=1 (no optimisation); the decomp relies on undefined
+# behaviour that Clang -O2 breaks (crash right after the editor starts). C stays at -O0, C++ (ImGui etc.) is optimised.
+LOCAL_CPPFLAGS := -O1 -std=c++17 -fexceptions -frtti
 LOCAL_DISABLE_FORMAT_STRING_CHECKS := true
 
 SRC_DIRS := src src/engine src/game src/audio src/menu src/buffers actors levels bin data assets \

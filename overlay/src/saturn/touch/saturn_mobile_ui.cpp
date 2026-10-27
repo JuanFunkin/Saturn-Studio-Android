@@ -26,6 +26,7 @@
 #include "saturn/libs/imgui/imgui.h"
 #include "saturn/libs/imgui/imgui_internal.h"
 #include "saturn/imgui/saturn_imgui.h"
+#include "saturn/libs/imgui/imgui_impl_opengl3.h"
 #include "saturn/imgui/icons/IconsForkAwesome.h"
 
 extern "C" {
@@ -89,6 +90,7 @@ static void settings_apply_to_gamepad() {
 // ---------------------------------------------------------------------------------------------------------
 
 static float ui_scale = 0.f;
+static float ui_scale_base = 0.f;   // scale for ui_mult = 1
 
 extern "C" float saturn_mobile_ui_scale(void) {
     if (ui_scale > 0.f) return ui_scale;
@@ -102,10 +104,11 @@ extern "C" float saturn_mobile_ui_scale(void) {
     }
     if (w <= 0 || h <= 0) return 2.0f; // do not cache: the window is not ready yet
     int shortSide = w < h ? w : h;
-    // The desktop layout is designed for ~540 logical pixels of height.
-    float base = (float)shortSide / 540.0f;
+    // Keep the desktop look: the layout is shown at ~640 logical pixels of height and scaled up to the screen.
+    float base = (float)shortSide / 640.0f;
     if (base < 1.0f) base = 1.0f;
     if (base > 4.0f) base = 4.0f;
+    ui_scale_base = base;
     ui_scale = base * cfg.ui_mult;
     if (ui_scale < 1.0f) ui_scale = 1.0f;
     settings_apply_to_gamepad();
@@ -116,21 +119,34 @@ extern "C" float saturn_touch_camera_sensitivity(void) { return cfg.cam_sens; }
 extern "C" int saturn_touch_tap_enabled(void) { return cfg.tap_tool; }
 
 void saturn_mobile_apply_style(ImGuiStyle *style) {
-    style->FramePadding = ImVec2(10, 8);
-    style->ItemSpacing = ImVec2(10, 10);
-    style->ItemInnerSpacing = ImVec2(8, 6);
-    style->WindowPadding = ImVec2(10, 10);
-    style->ScrollbarSize = 26.0f;
-    style->GrabMinSize = 28.0f;
-    style->TouchExtraPadding = ImVec2(6, 6);
-    style->IndentSpacing = 26.0f;
-    style->DockingSeparatorSize = 10.0f;
-    style->FrameRounding = 6.0f;
-    style->WindowRounding = 6.0f;
-    style->GrabRounding = 6.0f;
-    style->ScrollbarRounding = 8.0f;
-    style->WindowMinSize = ImVec2(140, 90);
+    // Same look as the desktop version; only the things that matter for fingers get a bit more room.
+    style->FramePadding = ImVec2(6, 5);
+    style->ItemSpacing = ImVec2(8, 6);
+    style->ScrollbarSize = 20.0f;
+    style->GrabMinSize = 20.0f;
+    style->TouchExtraPadding = ImVec2(4, 4);
+    style->DockingSeparatorSize = 8.0f;
     style->WindowMenuButtonPosition = ImGuiDir_None;
+}
+
+// Fonts are rasterized at (logical size * UI scale) so they stay sharp, then drawn at 1/UI scale.
+static const float FONT_PX = 14.0f;
+static bool fonts_rebuild_pending = false;
+
+void saturn_mobile_build_fonts() {
+    ImGuiIO &io = ImGui::GetIO();
+    const float S = saturn_mobile_ui_scale();
+    ImFontConfig defaultConfig;
+    defaultConfig.SizePixels = FONT_PX * S;
+    io.Fonts->AddFontDefault(&defaultConfig);
+
+    ImFontConfig symbolConfig;
+    symbolConfig.MergeMode = true;
+    symbolConfig.SizePixels = FONT_PX * S;
+    symbolConfig.GlyphMinAdvanceX = FONT_PX * S;
+    static const ImWchar icon_ranges[] = { ICON_MIN_FK, ICON_MAX_FK, 0 };
+    io.Fonts->AddFontFromFileTTF("fonts/forkawesome-webfont.ttf", symbolConfig.SizePixels, &symbolConfig, icon_ranges);
+    io.FontGlobalScale = 1.0f / S;
 }
 
 // ---------------------------------------------------------------------------------------------------------
@@ -233,6 +249,14 @@ static float pinch_dist() {
 
 extern "C" void saturn_mobile_begin_frame(void) {
     ImGuiIO &io = ImGui::GetIO();
+    if (fonts_rebuild_pending) { // UI size changed from the menu: rebuild the font atlas at the new size
+        fonts_rebuild_pending = false;
+        ImGui_ImplOpenGL3_DestroyFontsTexture();
+        io.Fonts->Clear();
+        saturn_mobile_build_fonts();
+        io.Fonts->Build();
+        ImGui_ImplOpenGL3_CreateFontsTexture();
+    }
     const float S = saturn_mobile_ui_scale();
     const size_t n = fingers.size();
     const float slop = SLOP / S;
@@ -381,59 +405,51 @@ static std::string window_label(const std::string &key) {
 static void draw_toolbar() {
     ImGuiIO &io = ImGui::GetIO();
     ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 6, 6), ImGuiCond_Always, ImVec2(1, 0));
-    ImGui::SetNextWindowBgAlpha(0.72f);
+    ImGui::SetNextWindowBgAlpha(0.55f);
     ImGuiWindowFlags fl = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings |
                           ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize |
                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6, 6));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
     if (ImGui::Begin("##mobile_toolbar", nullptr, fl)) {
         bool changed = false;
-        if (cfg.toolbar_collapsed) {
-            if (ImGui::Button(ICON_FK_TH_LARGE "###tb_expand")) { cfg.toolbar_collapsed = 0; changed = true; }
-        } else {
-            if (ImGui::Button(ICON_FK_TH_LARGE " Panels###tb_panels")) ImGui::OpenPopup("##panels_popup");
-            ImGui::SameLine();
-            bool tap = cfg.tap_tool != 0;
-            if (tap) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-            if (ImGui::Button(ICON_FK_CROSSHAIRS " Tap###tb_tap")) { cfg.tap_tool = !cfg.tap_tool; changed = true; }
-            if (tap) ImGui::PopStyleColor();
-            ImGui::SameLine();
-            bool pad = cfg.gamepad != 0;
-            if (pad) ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-            if (ImGui::Button(ICON_FK_GAMEPAD " Pad###tb_pad")) { cfg.gamepad = !cfg.gamepad; settings_apply_to_gamepad(); changed = true; }
-            if (pad) ImGui::PopStyleColor();
-            ImGui::SameLine();
-            if (ImGui::Button(ICON_FK_COG "###tb_opts")) ImGui::OpenPopup("##mobile_opts");
-            ImGui::SameLine();
-            if (ImGui::Button(">###tb_collapse")) { cfg.toolbar_collapsed = 1; changed = true; }
-        }
+        // three-bar menu button
+        if (ImGui::Button(ICON_FK_BARS "###mobile_menu_btn", ImVec2(34, 30))) ImGui::OpenPopup("##mobile_menu");
 
-        if (ImGui::BeginPopup("##panels_popup")) {
-            ImGui::TextDisabled("Panels");
-            ImGui::Separator();
+        ImGui::SetNextWindowPos(ImVec2(io.DisplaySize.x - 6, 44), ImGuiCond_Always, ImVec2(1, 0));
+        if (ImGui::BeginPopup("##mobile_menu")) {
+            ImGui::TextDisabled("Windows");
             for (auto &entry : visible_windows) {
                 std::string label = window_label(entry.first) + "###pw_" + entry.first;
                 ImGui::Checkbox(label.c_str(), &entry.second);
             }
-            ImGui::EndPopup();
-        }
-
-        if (ImGui::BeginPopup("##mobile_opts")) {
-            ImGui::TextDisabled("Touch");
             ImGui::Separator();
+            ImGui::TextDisabled("Touch");
+            bool tap = cfg.tap_tool != 0;
+            if (ImGui::Checkbox("Tap to spawn / select Marios", &tap)) { cfg.tap_tool = tap; changed = true; }
+            bool pad = cfg.gamepad != 0;
+            if (ImGui::Checkbox("On-screen gamepad", &pad)) { cfg.gamepad = pad; settings_apply_to_gamepad(); changed = true; }
+            ImGui::SetNextItemWidth(180);
             if (ImGui::SliderFloat("Camera speed", &cfg.cam_sens, 0.3f, 4.0f, "%.1f")) changed = true;
-            if (ImGui::SliderFloat("Pad opacity", &cfg.opacity, 0.15f, 1.0f, "%.2f")) { settings_apply_to_gamepad(); changed = true; }
-            if (ImGui::SliderFloat("UI size", &cfg.ui_mult, 0.7f, 1.6f, "%.2f")) changed = true;
-            ImGui::TextDisabled("UI size applies after restarting the app.");
-            if (ImGui::Button("Reset pad layout")) touch_layout_reset();
-            if (ImGui::Button("Reset panel layout")) {
+            ImGui::SetNextItemWidth(180);
+            if (ImGui::SliderFloat("Gamepad opacity", &cfg.opacity, 0.15f, 1.0f, "%.2f")) { settings_apply_to_gamepad(); changed = true; }
+            ImGui::SetNextItemWidth(180);
+            ImGui::SliderFloat("HUD size", &cfg.ui_mult, 0.7f, 1.6f, "%.2f");
+            if (ImGui::IsItemDeactivatedAfterEdit()) { // applied when the finger is lifted
+                ui_scale = ui_scale_base * cfg.ui_mult;
+                if (ui_scale < 1.0f) ui_scale = 1.0f;
+                fonts_rebuild_pending = true;
+                changed = true;
+            }
+            if (ImGui::Button("Reset gamepad")) touch_layout_reset();
+            ImGui::SameLine();
+            if (ImGui::Button("Reset windows")) {
                 std::error_code ec;
                 std::filesystem::remove("imgui.ini", ec);
                 std::filesystem::remove("windows.bin", ec);
                 android_toast("Layout reset. Close and reopen the app.");
             }
             ImGui::Separator();
-            ImGui::TextWrapped("1 finger: move camera\n2 fingers: rotate + pinch to zoom\nLong press: select Mario\n2 fingers on a panel: scroll");
+            ImGui::TextDisabled("1 finger: move camera\n2 fingers: rotate + pinch zoom\nLong press: select Mario\n2 fingers on a window: scroll");
             ImGui::EndPopup();
         }
         if (changed) settings_save();

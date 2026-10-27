@@ -19,6 +19,7 @@ int   saturn_touch_tap_enabled(void);        // 1 = a tap on the game view spawn
 }
 struct ImGuiStyle;
 void saturn_mobile_apply_style(ImGuiStyle *style);
+void saturn_mobile_build_fonts();
 #endif
 
 #endif

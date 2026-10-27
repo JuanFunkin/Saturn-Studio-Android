@@ -88,7 +88,7 @@ public class SaturnActivity extends SDLActivity {
         overlay.setTextSize(19);
         overlay.setGravity(Gravity.CENTER);
         overlay.setPadding(48, 48, 48, 48);
-        overlay.setText("Iniciando Saturn Studio...");
+        overlay.setText("Starting Saturn Studio...");
         mLayout.addView(overlay, new RelativeLayout.LayoutParams(
                 RelativeLayout.LayoutParams.MATCH_PARENT, RelativeLayout.LayoutParams.MATCH_PARENT));
     }
@@ -106,20 +106,20 @@ public class SaturnActivity extends SDLActivity {
                         String msg = r.readLine();
                         float p = Float.parseFloat(first == null ? "0" : first.trim());
                         if ("extracting".equals(msg)) {
-                            text = "Extrayendo los recursos de la ROM...\n" + Math.round(p * 100) + "%\n\n(solo la primera vez)";
+                            text = "Extracting assets from the ROM...\n" + Math.round(p * 100) + "%\n\n(first start only)";
                         } else if ("extracted".equals(msg) || p >= 1f) {
-                            text = "Cargando...";
+                            text = "Loading...";
                         } else if (p < 0) {
-                            text = "Error: " + ("rom_missing".equals(msg) ? "falta la ROM" : "la ROM no es válida")
-                                    + ".\nCierra la app y vuelve a importarla.";
+                            text = "Error: " + ("rom_missing".equals(msg) ? "the ROM is missing" : "the ROM is not valid")
+                                    + ".\nClose the app and import it again.";
                         } else {
-                            text = "Iniciando Saturn Studio...";
+                            text = "Starting Saturn Studio...";
                         }
                     } catch (IOException | NumberFormatException e) {
                         // the engine is rewriting the file: try again next time
                     }
                 } else {
-                    text = "Iniciando Saturn Studio...";
+                    text = "Starting Saturn Studio...";
                 }
                 // the engine hides the overlay by writing "ready" once the editor is on screen
                 File ready = new File(dataDir, "ready.flag");
@@ -135,8 +135,8 @@ public class SaturnActivity extends SDLActivity {
                 } else if (text != null) {
                     overlay.setVisibility(android.view.View.VISIBLE);
                     if (now - lastStatusChange > 60000) {
-                        text += "\n\nEsto tarda mucho. Si se queda así, cierra la app y ábrela otra vez:"
-                                + " te ofrecerá compartir el registro.";
+                        text += "\n\nThis is taking a long time. If it stays like this, close the app and open it again:"
+                                + " it will offer to share the log.";
                     }
                     overlay.setText(text);
                 }
@@ -205,7 +205,7 @@ public class SaturnActivity extends SDLActivity {
                 try {
                     result = copyToImports(uri);
                 } catch (Exception e) {
-                    toast("No se pudo abrir el archivo: " + e.getMessage());
+                    toast("Could not open the file: " + e.getMessage());
                 }
                 nativeOnFilePicked(result);
             }
@@ -231,7 +231,7 @@ public class SaturnActivity extends SDLActivity {
         dir.mkdirs();
         File dst = new File(dir, displayName(uri));
         try (InputStream in = getContentResolver().openInputStream(uri); OutputStream out = new FileOutputStream(dst)) {
-            if (in == null) throw new IOException("sin acceso al archivo");
+            if (in == null) throw new IOException("no access to the file");
             byte[] buf = new byte[64 * 1024];
             int n;
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);

@@ -13,6 +13,7 @@ extern char android_data_dir[4096];
 void android_init_paths(void);                         // reads <internal>/datadir.txt, mkdir -p, chdir()
 void android_debug_start(void);                        // stderr -> stderr.log, crash handler -> crash.txt
 void android_set_status(float progress, const char *msg); // writes extract_status.txt (progress < 0 = error)
+void android_breadcrumb(const char *msg);               // remembered for crash.txt only
 void android_write_text_file(const char *name, const char *text); // relative to the data folder
 
 // Opens the system file picker (blocks the calling thread until the user picks / cancels).

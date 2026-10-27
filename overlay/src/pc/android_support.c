@@ -6,6 +6,8 @@
 #include <jni.h>
 #include <android/log.h>
 #include <pthread.h>
+#include <dlfcn.h>
+#include <unwind.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -87,21 +89,44 @@ void android_write_text_file(const char *name, const char *text) {
     fclose(f);
 }
 
+void android_breadcrumb(const char *msg) {
+    snprintf(last_status, sizeof(last_status), "%s", msg ? msg : "");
+}
+
 void android_set_status(float progress, const char *msg) {
     if (!status_path[0]) return;
-    snprintf(last_status, sizeof(last_status), "%s", msg ? msg : "");
     FILE *f = fopen(status_path, "w");
     if (!f) return;
     fprintf(f, "%.3f\n%s\n", progress, msg ? msg : "");
     fclose(f);
 }
 
+struct bt_state { FILE *f; int n; };
+
+static _Unwind_Reason_Code bt_cb(struct _Unwind_Context *ctx, void *arg) {
+    struct bt_state *st = (struct bt_state *)arg;
+    uintptr_t pc = _Unwind_GetIP(ctx);
+    if (!pc) return _URC_END_OF_STACK;
+    Dl_info info;
+    if (dladdr((void *)pc, &info)) {
+        fprintf(st->f, "#%02d pc %p  %s (%s+%lu)\n", st->n, (void *)(pc - (uintptr_t)info.dli_fbase),
+                info.dli_fname ? info.dli_fname : "?", info.dli_sname ? info.dli_sname : "?",
+                info.dli_saddr ? (unsigned long)(pc - (uintptr_t)info.dli_saddr) : 0UL);
+    } else {
+        fprintf(st->f, "#%02d pc %p\n", st->n, (void *)pc);
+    }
+    return (++st->n >= 40) ? _URC_END_OF_STACK : _URC_NO_REASON;
+}
+
 static void crash_handler(int sig, siginfo_t *info, void *ctx) {
     (void)ctx;
     FILE *f = crash_path[0] ? fopen(crash_path, "w") : NULL;
     if (f) {
-        fprintf(f, "Saturn Studio crashed.\nsignal %d, fault address %p\nlast status: %s\n", sig, info ? info->si_addr : NULL, last_status);
-        fprintf(f, "Send this file and latest.log / stderr.log when reporting the problem.\n");
+        fprintf(f, "Saturn Studio crashed.\nsignal %d, fault address %p\nlast status: %s\n\nbacktrace:\n",
+                sig, info ? info->si_addr : NULL, last_status);
+        struct bt_state st = { f, 0 };
+        _Unwind_Backtrace(bt_cb, &st);
+        fprintf(f, "\nSend this file (and stderr.log / latest.log) when reporting the problem.\n");
         fclose(f);
     }
     __android_log_print(ANDROID_LOG_FATAL, TAG, "crash: signal %d addr %p", sig, info ? info->si_addr : NULL);
